@@ -1,4 +1,5 @@
 const path = require('path');
+require('dotenv').config();
 
 module.exports = {
   /**
@@ -66,9 +67,9 @@ module.exports = {
    */
   s3: {
     init: {
-      endpoint: 'https://sfo2.digitaloceanspaces.com',
-      accessKeyId: 'Y2TKFFCD6FT666JDA77Z',
-      secretAccessKey: 'RN+z4mnl+ll/J6Qo8XCRvThFkGPtX/6geCErjiWeMiI',
+      endpoint: process.env.DO_SPACES_ENDPOINT,
+      accessKeyId: process.env.DO_ACCESS_KEY_ID,
+      secretAccessKey: process.env.DO_SECRET_KEY_ID,
       s3ForcePathStyle: true // Always use path style URLs
     },
 

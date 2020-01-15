@@ -11,3 +11,4 @@ typings
 *.sh
 *.yml
 db.sqlite
+.env
