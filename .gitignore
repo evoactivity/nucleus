@@ -10,3 +10,6 @@ public_out
 test_out
 db.sqlite
 .env
+config.js
+config.*.js
+!config.template.js
