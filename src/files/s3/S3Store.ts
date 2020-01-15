@@ -8,7 +8,7 @@ const d = debug('nucleus:s3');
 
 AWS.config.credentials = new AWS.EC2MetadataCredentials({
   httpOptions: { timeout: 5000 },
-  maxRetries: 10,
+  maxRetries: 10
 });
 
 export default class S3Store implements IFileStore {
@@ -16,24 +16,34 @@ export default class S3Store implements IFileStore {
 
   public async hasFile(key: string) {
     const s3 = this.getS3();
-    return await new Promise<boolean>(resolve => s3.headObject({
-      Bucket: this.s3Config.bucketName,
-      Key: key,
-    }, (err) => {
-      if (err && err.code === 'NotFound') return resolve(false);
-      resolve(true);
-    }));
+    return await new Promise<boolean>(resolve =>
+      s3.headObject(
+        {
+          Bucket: this.s3Config.bucketName,
+          Key: key
+        },
+        err => {
+          if (err && err.code === 'NotFound') return resolve(false);
+          resolve(true);
+        }
+      )
+    );
   }
 
   public async getFileSize(key: string) {
     const s3 = this.getS3();
-    return await new Promise<number>(resolve => s3.headObject({
-      Bucket: this.s3Config.bucketName,
-      Key: key,
-    }, (err, info) => {
-      if (err && err.code === 'NotFound') return resolve(0);
-      resolve(info.ContentLength || 0);
-    }));
+    return await new Promise<number>(resolve =>
+      s3.headObject(
+        {
+          Bucket: this.s3Config.bucketName,
+          Key: key
+        },
+        (err, info) => {
+          if (err && err.code === 'NotFound') return resolve(0);
+          resolve(info.ContentLength || 0);
+        }
+      )
+    );
   }
 
   public async putFile(key: string, data: Buffer, overwrite = false) {
@@ -41,17 +51,24 @@ export default class S3Store implements IFileStore {
     const s3 = this.getS3();
     const keyExists = async () => await this.hasFile(key);
     let wrote = false;
-    if (overwrite || !await keyExists()) {
-      d(`Deciding to write file (either because overwrite is enabled or the key didn't exist)`);
-      await new Promise((resolve, reject) => s3.putObject({
-        Bucket: this.s3Config.bucketName,
-        Key: key,
-        Body: data,
-        ACL: 'public-read',
-      }, (err, data) => {
-        if (err) return reject(err);
-        resolve();
-      }));
+    if (overwrite || !(await keyExists())) {
+      d(
+        `Deciding to write file (either because overwrite is enabled or the key didn't exist)`
+      );
+      await new Promise((resolve, reject) =>
+        s3.putObject(
+          {
+            Bucket: this.s3Config.bucketName,
+            Key: key,
+            Body: data,
+            ACL: 'public-read'
+          },
+          (err, data) => {
+            if (err) return reject(err);
+            resolve();
+          }
+        )
+      );
       wrote = true;
     }
     if (overwrite) {
@@ -62,18 +79,21 @@ export default class S3Store implements IFileStore {
 
   public async getFile(key: string) {
     d(`Fetching file: '${key}'`);
-    return await new Promise<Buffer>((resolve) => {
+    return await new Promise<Buffer>(resolve => {
       const s3 = this.getS3();
-      s3.getObject({
-        Bucket: this.s3Config.bucketName,
-        Key: key,
-      }, (err, data) => {
-        if (err) {
-          d('File not found, defaulting to empty buffer');
-          return resolve(Buffer.from(''));
+      s3.getObject(
+        {
+          Bucket: this.s3Config.bucketName,
+          Key: key
+        },
+        (err, data) => {
+          if (err) {
+            d('File not found, defaulting to empty buffer');
+            return resolve(Buffer.from(''));
+          }
+          resolve(data.Body as Buffer);
         }
-        resolve(data.Body as Buffer);
-      });
+      );
     });
   }
 
@@ -82,15 +102,18 @@ export default class S3Store implements IFileStore {
     const s3 = this.getS3();
     const keys = await this.listFiles(key);
     d(`Found objects to delete: [${keys.join(', ')}]`);
-    await new Promise((resolve) => {
-      s3.deleteObjects({
-        Bucket: this.s3Config.bucketName,
-        Delete: {
-          Objects: keys.map(key => ({
-            Key: key,
-          })),
+    await new Promise(resolve => {
+      s3.deleteObjects(
+        {
+          Bucket: this.s3Config.bucketName,
+          Delete: {
+            Objects: keys.map(key => ({
+              Key: key
+            }))
+          }
         },
-      }, () => resolve());
+        () => resolve()
+      );
     });
   }
 
@@ -102,7 +125,15 @@ export default class S3Store implements IFileStore {
     }
 
     if (init && init.endpoint) {
-      return init.endpoint;
+      let url = init.endpoint;
+      let protocolRe = /^([a-z][a-z0-9+\-.]*:\/\/)(.*)/;
+      let matches = url.match(protocolRe);
+
+      if (matches) {
+        return `${matches[1]}${this.s3Config.bucketName}.${matches[2]}`;
+      } else {
+        return init.endpoint;
+      }
     }
 
     return `https://${this.s3Config.bucketName}.s3.amazonaws.com`;
@@ -111,13 +142,16 @@ export default class S3Store implements IFileStore {
   public async listFiles(prefix: string) {
     d(`Listing files under path: '${prefix}'`);
     const s3 = this.getS3();
-    const objects = await new Promise<AWS.S3.Object[]>((resolve) => {
-      s3.listObjects({
-        Bucket: this.s3Config.bucketName,
-        Prefix: prefix,
-      }, (err, data) => {
-        resolve(data.Contents);
-      });
+    const objects = await new Promise<AWS.S3.Object[]>(resolve => {
+      s3.listObjects(
+        {
+          Bucket: this.s3Config.bucketName,
+          Prefix: prefix
+        },
+        (err, data) => {
+          resolve(data.Contents);
+        }
+      );
     });
     return objects.map(object => object.Key).filter(key => !!key) as string[];
   }
