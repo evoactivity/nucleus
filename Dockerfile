@@ -7,6 +7,8 @@ WORKDIR /opt/service
 # Copy PJ, changes should invalidate entire image
 COPY package.json yarn.lock /opt/service/
 
+# Copy environment config
+COPY .env config.js /opt/service/
 
 # Copy commong typings
 COPY typings /opt/service/typings
